@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Roguemap // Explorer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            padding: 10px;
+            touch-action: none;
+        }
+        #gameWrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 540px;
+            gap: 10px;
+        }
+        #headerZone {
+            width: 100%;
+            text-align: center;
+            padding: 5px 0;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #00ffff;
+            text-shadow: 0 0 15px #00ffff;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 2px;
+        }
+        #subText {
+            font-size: 0.95rem;
+            color: #ff00ff;
+            text-shadow: 0 0 8px #ff00ff;
+        }
+        #boardContainer {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background-color: #050505;
+            border: 3px solid #111;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.05);
+            overflow: hidden;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: repeat(12, 1fr);
+            width: 100%;
+            height: 100%;
+        }
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            transition: background-color 0.15s ease, transform 0.1s ease;
+        }
+        
+        /* RPG Biome Covered Styles */
+        .cell.covered.forest { 
+            background: radial-gradient(circle, #0e3a1d 20%, #06220f 80%);
+            border: 1px solid #051a0b;
+        }
+        .cell.covered.grassland { 
+            background: radial-gradient(circle, #1b4d22 20%, #0f2e15 80%);
+            border: 1px solid #0b2410;
+        }
+        .cell.covered.land { 
+            background: radial-gradient(circle, #444444 20%, #222222 80%);
+            border: 1px solid #1a1a1a;
+        }
+        .cell.covered.sea { 
+            background: radial-gradient(circle, #0b2d4f 20%, #041628 80%);
+            border: 1px solid #020c17;
+        }
+
+        /* Revealed Empty Floors */
+        .cell.revealed {
+            cursor: default;
+            background-color: #020202 !important;
+            border: 1px solid #111;
+        }
+        
+        /* Neon Proximity Radar Alerts */
+        .n-1 { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
+        .n-2 { color: #00ff00; text-shadow: 0 0 8px #00ff00; }
+        .n-3 { color: #ffaa00; text-shadow: 0 0 8px #ffaa00; }
+        .n-4 { color: #ff0055; text-shadow: 0 0 10px #ff0055; }
+
+        /* Neon RPG Styles for Revealed Enemies & Pit Traps */
+        .enemy-reveal {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        #uiOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+        }
+        .hide {
+            display: none !important;
+        }
+        
+        /* Difficulty Select UI Controls */
+        #difficultyZone {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 5px;
+            width: 80%;
+            justify-content: center;
+        }
+        .diff-opt {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            background: #000;
+            color: #555;
+            border: 1px solid #222;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+        }
+        .diff-opt.selected {
+            color: #ff00ff;
+            border-color: #ff00ff;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+        }
+
+        .btn {
+            padding: 12px 35px;
+            font-size: 1.1rem;
+            background: transparent;
+            color: #00ffff;
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+            margin-top: 15px;
+        }
+        .btn:hover {
+            background: #00ffff;
+            color: #000;
+            box-shadow: 0 0 25px #00ffff;
+        }
+        #controlPanel {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px;
+            font-family: monospace;
+            font-size: 1rem;
+            color: #00ffff;
+        }
+        .mode-indicator {
+            padding: 6px 12px;
+            border: 1px solid #222;
+            border-radius: 4px;
+            background: #050505;
+            cursor: pointer;
+        }
+        .mode-indicator.active-flag {
+            color: #ff00ff;
+            border-color: #ff00ff;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);
+        }
+        
+        /* Mobile Viewport Safeguards */
+        @media (max-width: 600px) {
+            body { justify-content: flex-start; padding-top: 5px; }
+            h1 { font-size: 2.2rem; }
+            .cell { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="gameWrapper">
+        <div id="headerZone">
+            <h1>Roguemap</h1>
+            <div id="subText">Explorer</div>
+        </div>
+
+        <div id="boardContainer">
+            <div id="uiOverlay">
+                <h2 id="overlayTitle" style="font-size: 2rem; color: #00ffff; margin-bottom: 5px;">Radar On</h2>
+                <p id="overlayDesc" style="color: #888; font-size: 0.95rem; margin-bottom: 20px;">Tap to clear map. Flag to mark traps.</p>
+                
+                <div id="difficultyZone">
+                    <button class="diff-opt" data-traps="10">Easy</button>
+                    <button class="diff-opt selected" data-traps="16">Medium</button>
+                    <button class="diff-opt" data-traps="22">Hard</button>
+                </div>
+
+                <button id="startBtn" class="btn">Generate Map</button>
+            </div>
+            <div id="grid"></div>
+        </div>
+
+        <div id="controlPanel">
+            <span id="mineCountDisplay">TRAPS MARKED: 0 / 16</span>
+            <div id="modeToggleBtn" class="mode-indicator">MODE: DIG</div>
+        </div>
+    </div>
+
+    <script>
+        const gridElement = document.getElementById('grid');
+        const uiOverlay = document.getElementById('uiOverlay');
+        const startBtn = document.getElementById('startBtn');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlayDesc = document.getElementById('overlayDesc');
+        const mineCountDisplay = document.getElementById('mineCountDisplay');
+        const modeToggleBtn = document.getElementById('modeToggleBtn');
+        const diffOptions = document.querySelectorAll('.diff-opt');
+
+        // Web Audio Synth Engine
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new AudioCtx();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'dig') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(65, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.start(now); osc.stop(now + 0.15);
+            } else if (type === 'flag') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(55, now);
+                osc.frequency.setValueAtTime(40, now + 0.05);
+                gain.gain.setValueAtTime(0.35, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.12);
+                osc.start(now); osc.stop(now + 0.12);
+            } else if (type === 'boom') {
+                const notes = [392.00, 392.00, 392.00, 311.13]; 
+                const durations = [0.15, 0.15, 0.15, 0.60];
+                const delays = [0.0, 0.18, 0.36, 0.54];
+                
+                notes.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + delays[idx]);
+                    gain.gain.setValueAtTime(0.2, now + delays[idx]);
+                    gain.gain.linearRampToValueAtTime(0, now + delays[idx] + durations[idx]);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now + delays[idx]); osc.stop(now + delays[idx] + durations[idx]);
+                });
+            } else if (type === 'win') {
+                const melody = [
+                    329.63, 329.63, 349.23, 392.00, 
+                    392.00, 349.23, 329.63, 293.66, 
+                    261.63, 261.63, 293.66, 329.63, 
+                    329.63, 293.66, 293.66
+                ];
+                const tempo = 0.22;
+                melody.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + (idx * tempo));
+                    gain.gain.setValueAtTime(0.15, now + (idx * tempo));
+                    gain.gain.linearRampToValueAtTime(0, now + (idx * tempo) + tempo - 0.02);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now + (idx * tempo)); osc.stop(now + (idx * tempo) + tempo);
+                });
+            }
+        }
+
+        // Configuration Settings
+        const SIZE = 12;
+        let activeTrapsCount = 16; // Defaults to Medium
+
+        // States
+        let board = [];
+        let gameActive = false;
+        let isFlagMode = false;
+        let flagCount = 0;
+
+        // RPG Asset Matrix
+        const ENEMY_ASSETS = {
+            vortex:   { glyph: "🌪️", style: "filter: drop-shadow(0 0 6px #5555ff);" },  
+            shark:    { glyph: "🦈", style: "filter: drop-shadow(0 0 6px #00ffff);" },  
+            snake:    { glyph: "🐍", style: "filter: drop-shadow(0 0 6px #ff00ff);" },  
+            scorpion: { glyph: "🦂", style: "filter: drop-shadow(0 0 6px #ffaa00);" },  
+            ant:      { glyph: "🐜", style: "filter: drop-shadow(0 0 6px #00ff00);" },  
+            spider:   { glyph: "🕷️", style: "filter: drop-shadow(0 0 6px #ffffff);" },  
+            web:      { glyph: "🕸️", style: "filter: drop-shadow(0 0 6px #888888);" }   
+        };
+
+        // Difficulty Selection Toggle System
+        diffOptions.forEach(opt => {
+            opt.addEventListener('click', () => {
+                diffOptions.forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                activeTrapsCount = parseInt(opt.getAttribute('data-traps'));
+                updateCountDisplay();
+            });
+        });
+
+        startBtn.addEventListener('click', initMap);
+        modeToggleBtn.addEventListener('click', () => {
+            isFlagMode = !isFlagMode;
+            if (isFlagMode) {
+                modeToggleBtn.innerText = "MODE: FLAG";
+                modeToggleBtn.classList.add('active-flag');
+            } else {
+                modeToggleBtn.innerText = "MODE: DIG";
+                modeToggleBtn.classList.remove('active-flag');
+            }
+        });
+
+        function initMap() {
+            if (!audioCtx) audioCtx = new AudioCtx();
+            uiOverlay.classList.add('hide');
+            gridElement.innerHTML = "";
+            board = [];
+            flagCount = 0;
+            isFlagMode = false;
+            modeToggleBtn.innerText = "MODE: DIG";
+            modeToggleBtn.classList.remove('active-flag');
+            updateCountDisplay();
+
+            for (let r = 0; r < SIZE; r++) {
+                board[r] = [];
+                for (let c = 0; c < SIZE; c++) {
+                    board[r][c] = {
+                        r: r, c: c,
+                        terrain: 'land', 
+                        isTrap: false,
+                        trapType: null,
+                        revealed: false,
+                        flagged: false,
+                        count: 0,
+                        element: null
+                    };
+                }
+            }
+
+            generateMixedGeography();
+            spawnProceduralTraps();
+            calculateProximityNumbers();
+            renderBoardView();
+            gameActive = true;
+        }
+
+        function generateMixedGeography() {
+            const seaFactor = 0.20 + (Math.random() * 0.15); 
+            const targetsForSea = Math.floor((SIZE * SIZE) * seaFactor);
+            let seaAllocated = 0;
+            
+            while (seaAllocated < targetsForSea) {
+                let centerR = Math.floor(Math.random() * (SIZE - 2)) + 1;
+                let centerC = Math.floor(Math.random() * (SIZE - 2)) + 1;
+                
+                let clusterOffsets = [{r:0,c:0}, {r:0,c:1}, {r:1,c:0}, {r:1,c:1}];
+                clusterOffsets.forEach(offset => {
+                    let nr = centerR + offset.r;
+                    let nc = centerC + offset.c;
+                    if (board[nr][nc].terrain !== 'sea') {
+                        board[nr][nc].terrain = 'sea';
+                        seaAllocated++;
+                    }
+                });
+
+                if (Math.random() > 0.4) {
+                    let extraR = centerR + (Math.random() > 0.5 ? 2 : -1);
+                    let extraC = centerC + (Math.random() > 0.5 ? 2 : -1);
+                    if (extraR >= 0 && extraR < SIZE && extraC >= 0 && extraC < SIZE) {
+                        if (board[extraR][extraC].terrain !== 'sea') {
+                            board[extraR][extraC].terrain = 'sea';
+                            seaAllocated++;
+                        }
+                    }
+                }
+            }
+
+            const forestRatio = 0.20 + (Math.random() * 0.25);
+            const grasslandRatio = 0.25 + (Math.random() * 0.25);
+
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (board[r][c].terrain !== 'sea') {
+                        let biomeDice = Math.random();
+                        if (biomeDice < forestRatio) {
+                            board[r][c].terrain = 'forest';
+                        } else if (biomeDice < (forestRatio + grasslandRatio)) {
+                            board[r][c].terrain = 'grassland';
+                        } else {
+                            board[r][c].terrain = 'land';
+                        }
+                    }
+                }
+            }
+        }
+
+        function spawnProceduralTraps() {
+            let trapsAllocated = 0;
+            while (trapsAllocated < activeTrapsCount) {
+                let r = Math.floor(Math.random() * SIZE);
+                let c = Math.floor(Math.random() * SIZE);
+                let tile = board[r][c];
+
+                if (!tile.isTrap) {
+                    tile.isTrap = true;
+                    if (tile.terrain === 'sea') {
+                        tile.trapType = Math.random() > 0.5 ? 'vortex' : 'shark';
+                    } else if (tile.terrain === 'forest') {
+                        tile.trapType = Math.random() > 0.5 ? 'snake' : 'scorpion';
+                    } else if (tile.terrain === 'grassland') {
+                        tile.trapType = 'ant';
+                    } else {
+                        tile.trapType = Math.random() > 0.5 ? 'spider' : 'web';
+                    }
+                    trapsAllocated++;
+                }
+            }
+        }
+
+        function calculateProximityNumbers() {
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (board[r][c].isTrap) continue;
+                    let count = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            let nr = r + dr, nc = c + dc;
+                            if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+                                if (board[nr][nc].isTrap) count++;
+                            }
+                        }
+                    }
+                    board[r][c].count = count;
+                }
+            }
+        }
+
+        function renderBoardView() {
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    const tile = board[r][c];
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell', 'covered', tile.terrain);
+                    
+                    if (tile.terrain === 'sea') cell.innerText = "🌊";
+                    else if (tile.terrain === 'forest') cell.innerText = "🌲";
+                    else if (tile.terrain === 'grassland') cell.innerText = "🌱"; 
+                    else cell.innerText = "⛰️";
+
+                    cell.addEventListener('click', () => handleCellInteraction(tile, 'click'));
+                    cell.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        handleCellInteraction(tile, 'right');
+                    });
+
+                    tile.element = cell;
+                    gridElement.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellInteraction(tile, clickType) {
+            if (!gameActive || tile.revealed) return;
+
+            if (clickType === 'right' || isFlagMode) {
+                tile.flagged = !tile.flagged;
+                playSound('flag');
+                if (tile.flagged) {
+                    tile.element.innerText = "📍";
+                    flagCount++;
+                } else {
+                    if (tile.terrain === 'sea') tile.element.innerText = "🌊";
+                    else if (tile.terrain === 'forest') tile.element.innerText = "🌲";
+                    else if (tile.terrain === 'grassland') tile.element.innerText = "🌱";
+                    else tile.element.innerText = "⛰️";
+                    flagCount--;
+                }
+                updateCountDisplay();
+                checkVictoryCondition();
+            } else {
+                if (tile.flagged) return;
+                
+                if (tile.isTrap) {
+                    triggerEndGame(tile);
+                } else {
+                    playSound('dig');
+                    revealSafeCell(tile.r, tile.c);
+                    checkVictoryCondition();
+                }
+            }
+        }
+
+        function revealSafeCell(r, c) {
+            let tile = board[r][c];
+            if (tile.revealed || tile.flagged) return;
+
+            tile.revealed = true;
+            tile.element.classList.remove('covered');
+            tile.element.classList.add('revealed');
+            
+            if (tile.terrain === 'sea') tile.element.innerText = "🐚";
+            else if (tile.terrain === 'forest') tile.element.innerText = "🍃";
+            else if (tile.terrain === 'grassland') tile.element.innerText = "🍀";
+            else tile.element.innerText = "🌼";
+
+            if (tile.count > 0) {
+                tile.element.innerText = tile.count;
+                tile.element.classList.add(`n-${Math.min(tile.count, 4)}`);
+            } else {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        let nr = r + dr, nc = c + dc;
+                        if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+                            revealSafeCell(nr, nc);
+                        }
+                    }
+                }
+            }
+        }
+
+        function triggerEndGame(triggeredTile) {
+            gameActive = false;
+            playSound('boom');
+
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    let tile = board[r][c];
+                    if (tile.isTrap) {
+                        tile.element.classList.remove('covered');
+                        tile.element.classList.add('revealed', 'enemy-reveal');
+                        
+                        let monster = ENEMY_ASSETS[tile.trapType];
+                        tile.element.innerHTML = `<span style="${monster.style}">${monster.glyph}</span>`;
+                    }
+                }
+            }
+
+            triggeredTile.element.style.backgroundColor = "rgba(255, 0, 0, 0.4)";
+
+            setTimeout(() => {
+                overlayTitle.innerText = "YOU DIED";
+                overlayTitle.style.color = "#ff0055";
+                overlayTitle.style.textShadow = "0 0 15px #ff0055";
+                overlayDesc.innerText = `An environmental hazard claimed your explorer team.`;
+                startBtn.innerText = "Try to Survive Again";
+                uiOverlay.classList.remove('hide');
+            }, 1200);
+        }
+
+        function checkVictoryCondition() {
+            let won = true;
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    let tile = board[r][c];
+                    if (!tile.isTrap && !tile.revealed) won = false;
+                }
+            }
+            if (won) {
+                gameActive = false;
+                playSound('win');
+                overlayTitle.innerText = "MAP CLEARED";
+                overlayTitle.style.color = "#00ff00";
+                overlayTitle.style.textShadow = "0 0 15px #00ff00";
+                overlayDesc.innerText = "You successfully mapped the biomes and avoided the threats!";
+                startBtn.innerText = "Explore Next Map";
+                uiOverlay.classList.remove('hide');
+            }
+        }
+
+        function updateCountDisplay() {
+            mineCountDisplay.innerText = `TRAPS MARKED: ${flagCount} / ${activeTrapsCount}`;
+        }
+    </script>
+</body>
+</html>
