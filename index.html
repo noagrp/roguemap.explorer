@@ -1,626 +1,135 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Roguemap // Explorer</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            background-color: #000000;
-            color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-            padding: 10px;
-            touch-action: none;
-        }
-        #gameWrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            max-width: 540px;
-            gap: 10px;
-        }
-        #headerZone {
-            width: 100%;
-            text-align: center;
-            padding: 5px 0;
-        }
-        h1 {
-            font-size: 2.5rem;
-            color: #00ffff;
-            text-shadow: 0 0 15px #00ffff;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            margin-bottom: 2px;
-        }
-        #subText {
-            font-size: 0.95rem;
-            color: #ff00ff;
-            text-shadow: 0 0 8px #ff00ff;
-        }
-        #boardContainer {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            background-color: #050505;
-            border: 3px solid #111;
-            border-radius: 8px;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.05);
-            overflow: hidden;
-        }
-        #grid {
-            display: grid;
-            grid-template-columns: repeat(12, 1fr);
-            grid-template-rows: repeat(12, 1fr);
-            width: 100%;
-            height: 100%;
-        }
-        .cell {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-            font-weight: bold;
-            cursor: pointer;
-            user-select: none;
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            transition: background-color 0.15s ease, transform 0.1s ease;
-        }
-        
-        /* RPG Biome Covered Styles */
-        .cell.covered.forest { 
-            background: radial-gradient(circle, #0e3a1d 20%, #06220f 80%);
-            border: 1px solid #051a0b;
-        }
-        .cell.covered.grassland { 
-            background: radial-gradient(circle, #1b4d22 20%, #0f2e15 80%);
-            border: 1px solid #0b2410;
-        }
-        .cell.covered.land { 
-            background: radial-gradient(circle, #444444 20%, #222222 80%);
-            border: 1px solid #1a1a1a;
-        }
-        .cell.covered.sea { 
-            background: radial-gradient(circle, #0b2d4f 20%, #041628 80%);
-            border: 1px solid #020c17;
-        }
-
-        /* Revealed Empty Floors */
-        .cell.revealed {
-            cursor: default;
-            background-color: #020202 !important;
-            border: 1px solid #111;
-        }
-        
-        /* Neon Proximity Radar Alerts */
-        .n-1 { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
-        .n-2 { color: #00ff00; text-shadow: 0 0 8px #00ff00; }
-        .n-3 { color: #ffaa00; text-shadow: 0 0 8px #ffaa00; }
-        .n-4 { color: #ff0055; text-shadow: 0 0 10px #ff0055; }
-
-        /* Neon RPG Styles for Revealed Enemies & Pit Traps */
-        .enemy-reveal {
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        @keyframes popIn {
-            0% { transform: scale(0.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        #uiOverlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 10;
-            text-align: center;
-            padding: 20px;
-        }
-        .hide {
-            display: none !important;
-        }
-        
-        /* Difficulty Select UI Controls */
-        #difficultyZone {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 5px;
-            width: 80%;
-            justify-content: center;
-        }
-        .diff-opt {
-            padding: 8px 16px;
-            font-size: 0.85rem;
-            font-family: monospace;
-            background: #000;
-            color: #555;
-            border: 1px solid #222;
-            border-radius: 4px;
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: all 0.2s ease;
-        }
-        .diff-opt.selected {
-            color: #ff00ff;
-            border-color: #ff00ff;
-            box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
-        }
-
-        .btn {
-            padding: 12px 35px;
-            font-size: 1.1rem;
-            background: transparent;
-            color: #00ffff;
-            border: 2px solid #00ffff;
-            border-radius: 5px;
-            cursor: pointer;
-            text-transform: uppercase;
-            font-weight: bold;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
-            margin-top: 15px;
-        }
-        .btn:hover {
-            background: #00ffff;
-            color: #000;
-            box-shadow: 0 0 25px #00ffff;
-        }
-        #controlPanel {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px 10px;
-            font-family: monospace;
-            font-size: 1rem;
-            color: #00ffff;
-        }
-        .mode-indicator {
-            padding: 6px 12px;
-            border: 1px solid #222;
-            border-radius: 4px;
-            background: #050505;
-            cursor: pointer;
-        }
-        .mode-indicator.active-flag {
-            color: #ff00ff;
-            border-color: #ff00ff;
-            box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);
-        }
-        
-        /* Mobile Viewport Safeguards */
-        @media (max-width: 600px) {
-            body { justify-content: flex-start; padding-top: 5px; }
-            h1 { font-size: 2.2rem; }
-            .cell { font-size: 1.1rem; }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Roguemap">
+<title>Roguemap // Explorer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{--cyan:#00ffff;--pink:#ff00ff;--board:min(94vw,540px,72vh)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%}
+body{background:#000;color:#fff;font-family:Segoe UI,Tahoma,sans-serif;min-height:100vh;min-height:100dvh;overflow:hidden;touch-action:none;display:flex;justify-content:center;padding:max(6px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
+#gameWrapper{width:min(100%,560px);height:100%;display:flex;flex-direction:column;align-items:center;gap:6px}
+#headerZone{text-align:center;flex:0 0 auto}
+h1{font-size:clamp(1.5rem,7vw,2.4rem);color:var(--cyan);text-shadow:0 0 15px var(--cyan);letter-spacing:4px;text-transform:uppercase}
+#subText{font-size:.82rem;color:var(--pink);text-shadow:0 0 8px var(--pink)}
+#stats{width:var(--board);display:flex;justify-content:space-between;font:700 .78rem monospace;color:#aaa;gap:8px}
+#best{color:#ffd54f}
+#boardContainer{position:relative;width:var(--board);height:var(--board);background:#050505;border:3px solid #111;border-radius:9px;overflow:hidden;box-shadow:0 0 30px rgba(0,255,255,.07)}
+#grid{display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(12,1fr);width:100%;height:100%}
+.cell{display:flex;align-items:center;justify-content:center;font-size:clamp(.72rem,3.8vw,1.35rem);font-weight:900;user-select:none;border:1px solid rgba(255,255,255,.035);transition:background-color .12s,transform .08s}
+.cell.covered:active{transform:scale(.9);filter:brightness(1.35)}
+.forest{background:radial-gradient(circle,#0e3a1d 20%,#06220f 80%)}
+.grassland{background:radial-gradient(circle,#1b4d22 20%,#0f2e15 80%)}
+.land{background:radial-gradient(circle,#444 20%,#222 80%)}
+.sea{background:radial-gradient(circle,#0b2d4f 20%,#041628 80%)}
+.cell.revealed{background:#020202!important;border-color:#111}.cell.flagged{color:#ff43ff;text-shadow:0 0 8px #ff00ff}
+.n-1{color:#0ff;text-shadow:0 0 8px #0ff}.n-2{color:#0f0;text-shadow:0 0 8px #0f0}.n-3{color:#fa0;text-shadow:0 0 8px #fa0}.n-4,.n-5,.n-6,.n-7,.n-8{color:#ff245e;text-shadow:0 0 9px #ff245e}
+.enemy{animation:pop .24s ease-out}@keyframes pop{from{transform:scale(.45);opacity:.2}to{transform:scale(1);opacity:1}}
+.overlay{position:absolute;inset:0;z-index:10;background:rgba(0,0,0,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px}.hide{display:none!important}
+.overlay h2{font-size:1.8rem;color:var(--cyan);margin-bottom:6px}.overlay p{color:#888;font-size:.9rem;margin-bottom:14px;line-height:1.45}
+#difficultyZone{display:flex;gap:7px;margin-bottom:4px}.diff-opt,.action,.ctl{background:#050505;color:#777;border:1px solid #333;border-radius:7px;padding:8px 12px;font-weight:800;cursor:pointer}
+.diff-opt.selected{color:var(--pink);border-color:var(--pink);box-shadow:0 0 10px rgba(255,0,255,.25)}
+.action{color:var(--cyan);border:2px solid var(--cyan);padding:11px 24px;margin-top:10px}
+#controlPanel{width:var(--board);display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:7px;font:700 .76rem monospace;color:var(--cyan)}
+.ctl{color:#bbb;padding:8px 10px}.ctl.active{color:var(--pink);border-color:var(--pink);box-shadow:0 0 9px rgba(255,0,255,.2)}
+#hint{font-size:.68rem;color:#555;text-align:center;min-height:14px}
+@media(max-height:680px){:root{--board:min(88vw,500px,66vh)}h1{font-size:1.35rem}#subText{display:none}}
+@media(prefers-reduced-motion:reduce){.cell,.enemy{transition:none;animation:none}}
+</style>
 </head>
 <body>
+<div id="gameWrapper">
+ <div id="headerZone"><h1>Roguemap</h1><div id="subText">Explorer</div></div>
+ <div id="stats"><span id="timer">00:00</span><span id="remaining">TRAPS: 16</span><span id="best">BEST: --:--</span></div>
+ <div id="boardContainer">
+  <div id="uiOverlay" class="overlay">
+   <h2 id="overlayTitle">Radar On</h2>
+   <p id="overlayDesc">Dig the map. Flag danger. First dig is safe.</p>
+   <div id="difficultyZone">
+    <button class="diff-opt" data-traps="10" data-name="easy">Easy</button>
+    <button class="diff-opt selected" data-traps="16" data-name="medium">Medium</button>
+    <button class="diff-opt" data-traps="22" data-name="hard">Hard</button>
+   </div>
+   <button id="startBtn" class="action">Generate Map</button>
+  </div>
+  <div id="pauseOverlay" class="overlay hide"><h2>Paused</h2><button id="resumeBtn" class="action">Resume</button></div>
+  <div id="grid"></div>
+ </div>
+ <div id="controlPanel">
+  <span id="flagDisplay">FLAGS: 0 / 16</span>
+  <button id="modeToggleBtn" class="ctl">DIG</button>
+  <button id="pauseBtn" class="ctl">PAUSE</button>
+ </div>
+ <div id="hint">Tap to dig · long-press to flag · tap a revealed number to chord</div>
+</div>
+<script>
+const SIZE=12,grid=document.getElementById('grid'),ui=document.getElementById('uiOverlay'),pauseOverlay=document.getElementById('pauseOverlay');
+const timerEl=document.getElementById('timer'),remainingEl=document.getElementById('remaining'),flagDisplay=document.getElementById('flagDisplay'),bestEl=document.getElementById('best');
+const overlayTitle=document.getElementById('overlayTitle'),overlayDesc=document.getElementById('overlayDesc'),startBtn=document.getElementById('startBtn'),modeBtn=document.getElementById('modeToggleBtn'),pauseBtn=document.getElementById('pauseBtn');
+const AudioCtx=window.AudioContext||window.webkitAudioContext;let audioCtx=null;
+function sfx(f,t='triangle',d=.08,v=.05){try{if(!audioCtx)audioCtx=new AudioCtx();if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+d);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d)}catch(e){}}
+const ASSETS={vortex:'🌪️',shark:'🦈',snake:'🐍',scorpion:'🦂',ant:'🐜',spider:'🕷️',web:'🕸️'},BIOMES=['forest','grassland','land','sea'];
+let board=[],traps=16,difficulty='medium',active=false,flagMode=false,flags=0,firstDig=true,seconds=0,timer=null,paused=false,longTimer=null,longTriggered=false;
 
-    <div id="gameWrapper">
-        <div id="headerZone">
-            <h1>Roguemap</h1>
-            <div id="subText">Explorer</div>
-        </div>
-
-        <div id="boardContainer">
-            <div id="uiOverlay">
-                <h2 id="overlayTitle" style="font-size: 2rem; color: #00ffff; margin-bottom: 5px;">Radar On</h2>
-                <p id="overlayDesc" style="color: #888; font-size: 0.95rem; margin-bottom: 20px;">Tap to clear map. Flag to mark traps.</p>
-                
-                <div id="difficultyZone">
-                    <button class="diff-opt" data-traps="10">Easy</button>
-                    <button class="diff-opt selected" data-traps="16">Medium</button>
-                    <button class="diff-opt" data-traps="22">Hard</button>
-                </div>
-
-                <button id="startBtn" class="btn">Generate Map</button>
-            </div>
-            <div id="grid"></div>
-        </div>
-
-        <div id="controlPanel">
-            <span id="mineCountDisplay">TRAPS MARKED: 0 / 16</span>
-            <div id="modeToggleBtn" class="mode-indicator">MODE: DIG</div>
-        </div>
-    </div>
-
-    <script>
-        const gridElement = document.getElementById('grid');
-        const uiOverlay = document.getElementById('uiOverlay');
-        const startBtn = document.getElementById('startBtn');
-        const overlayTitle = document.getElementById('overlayTitle');
-        const overlayDesc = document.getElementById('overlayDesc');
-        const mineCountDisplay = document.getElementById('mineCountDisplay');
-        const modeToggleBtn = document.getElementById('modeToggleBtn');
-        const diffOptions = document.querySelectorAll('.diff-opt');
-
-        // Web Audio Synth Engine
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        let audioCtx = null;
-
-        function playSound(type) {
-            if (!audioCtx) audioCtx = new AudioCtx();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
-            const now = audioCtx.currentTime;
-
-            if (type === 'dig') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(65, now);
-                osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.15);
-                osc.start(now); osc.stop(now + 0.15);
-            } else if (type === 'flag') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(55, now);
-                osc.frequency.setValueAtTime(40, now + 0.05);
-                gain.gain.setValueAtTime(0.35, now);
-                gain.gain.linearRampToValueAtTime(0, now + 0.12);
-                osc.start(now); osc.stop(now + 0.12);
-            } else if (type === 'boom') {
-                const notes = [392.00, 392.00, 392.00, 311.13]; 
-                const durations = [0.15, 0.15, 0.15, 0.60];
-                const delays = [0.0, 0.18, 0.36, 0.54];
-                
-                notes.forEach((freq, idx) => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(freq, now + delays[idx]);
-                    gain.gain.setValueAtTime(0.2, now + delays[idx]);
-                    gain.gain.linearRampToValueAtTime(0, now + delays[idx] + durations[idx]);
-                    osc.connect(gain); gain.connect(audioCtx.destination);
-                    osc.start(now + delays[idx]); osc.stop(now + delays[idx] + durations[idx]);
-                });
-            } else if (type === 'win') {
-                const melody = [
-                    329.63, 329.63, 349.23, 392.00, 
-                    392.00, 349.23, 329.63, 293.66, 
-                    261.63, 261.63, 293.66, 329.63, 
-                    329.63, 293.66, 293.66
-                ];
-                const tempo = 0.22;
-                melody.forEach((freq, idx) => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, now + (idx * tempo));
-                    gain.gain.setValueAtTime(0.15, now + (idx * tempo));
-                    gain.gain.linearRampToValueAtTime(0, now + (idx * tempo) + tempo - 0.02);
-                    osc.connect(gain); gain.connect(audioCtx.destination);
-                    osc.start(now + (idx * tempo)); osc.stop(now + (idx * tempo) + tempo);
-                });
-            }
-        }
-
-        // Configuration Settings
-        const SIZE = 12;
-        let activeTrapsCount = 16; // Defaults to Medium
-
-        // States
-        let board = [];
-        let gameActive = false;
-        let isFlagMode = false;
-        let flagCount = 0;
-
-        // RPG Asset Matrix
-        const ENEMY_ASSETS = {
-            vortex:   { glyph: "🌪️", style: "filter: drop-shadow(0 0 6px #5555ff);" },  
-            shark:    { glyph: "🦈", style: "filter: drop-shadow(0 0 6px #00ffff);" },  
-            snake:    { glyph: "🐍", style: "filter: drop-shadow(0 0 6px #ff00ff);" },  
-            scorpion: { glyph: "🦂", style: "filter: drop-shadow(0 0 6px #ffaa00);" },  
-            ant:      { glyph: "🐜", style: "filter: drop-shadow(0 0 6px #00ff00);" },  
-            spider:   { glyph: "🕷️", style: "filter: drop-shadow(0 0 6px #ffffff);" },  
-            web:      { glyph: "🕸️", style: "filter: drop-shadow(0 0 6px #888888);" }   
-        };
-
-        // Difficulty Selection Toggle System
-        diffOptions.forEach(opt => {
-            opt.addEventListener('click', () => {
-                diffOptions.forEach(o => o.classList.remove('selected'));
-                opt.classList.add('selected');
-                activeTrapsCount = parseInt(opt.getAttribute('data-traps'));
-                updateCountDisplay();
-            });
-        });
-
-        startBtn.addEventListener('click', initMap);
-        modeToggleBtn.addEventListener('click', () => {
-            isFlagMode = !isFlagMode;
-            if (isFlagMode) {
-                modeToggleBtn.innerText = "MODE: FLAG";
-                modeToggleBtn.classList.add('active-flag');
-            } else {
-                modeToggleBtn.innerText = "MODE: DIG";
-                modeToggleBtn.classList.remove('active-flag');
-            }
-        });
-
-        function initMap() {
-            if (!audioCtx) audioCtx = new AudioCtx();
-            uiOverlay.classList.add('hide');
-            gridElement.innerHTML = "";
-            board = [];
-            flagCount = 0;
-            isFlagMode = false;
-            modeToggleBtn.innerText = "MODE: DIG";
-            modeToggleBtn.classList.remove('active-flag');
-            updateCountDisplay();
-
-            for (let r = 0; r < SIZE; r++) {
-                board[r] = [];
-                for (let c = 0; c < SIZE; c++) {
-                    board[r][c] = {
-                        r: r, c: c,
-                        terrain: 'land', 
-                        isTrap: false,
-                        trapType: null,
-                        revealed: false,
-                        flagged: false,
-                        count: 0,
-                        element: null
-                    };
-                }
-            }
-
-            generateMixedGeography();
-            spawnProceduralTraps();
-            calculateProximityNumbers();
-            renderBoardView();
-            gameActive = true;
-        }
-
-        function generateMixedGeography() {
-            const seaFactor = 0.20 + (Math.random() * 0.15); 
-            const targetsForSea = Math.floor((SIZE * SIZE) * seaFactor);
-            let seaAllocated = 0;
-            
-            while (seaAllocated < targetsForSea) {
-                let centerR = Math.floor(Math.random() * (SIZE - 2)) + 1;
-                let centerC = Math.floor(Math.random() * (SIZE - 2)) + 1;
-                
-                let clusterOffsets = [{r:0,c:0}, {r:0,c:1}, {r:1,c:0}, {r:1,c:1}];
-                clusterOffsets.forEach(offset => {
-                    let nr = centerR + offset.r;
-                    let nc = centerC + offset.c;
-                    if (board[nr][nc].terrain !== 'sea') {
-                        board[nr][nc].terrain = 'sea';
-                        seaAllocated++;
-                    }
-                });
-
-                if (Math.random() > 0.4) {
-                    let extraR = centerR + (Math.random() > 0.5 ? 2 : -1);
-                    let extraC = centerC + (Math.random() > 0.5 ? 2 : -1);
-                    if (extraR >= 0 && extraR < SIZE && extraC >= 0 && extraC < SIZE) {
-                        if (board[extraR][extraC].terrain !== 'sea') {
-                            board[extraR][extraC].terrain = 'sea';
-                            seaAllocated++;
-                        }
-                    }
-                }
-            }
-
-            const forestRatio = 0.20 + (Math.random() * 0.25);
-            const grasslandRatio = 0.25 + (Math.random() * 0.25);
-
-            for (let r = 0; r < SIZE; r++) {
-                for (let c = 0; c < SIZE; c++) {
-                    if (board[r][c].terrain !== 'sea') {
-                        let biomeDice = Math.random();
-                        if (biomeDice < forestRatio) {
-                            board[r][c].terrain = 'forest';
-                        } else if (biomeDice < (forestRatio + grasslandRatio)) {
-                            board[r][c].terrain = 'grassland';
-                        } else {
-                            board[r][c].terrain = 'land';
-                        }
-                    }
-                }
-            }
-        }
-
-        function spawnProceduralTraps() {
-            let trapsAllocated = 0;
-            while (trapsAllocated < activeTrapsCount) {
-                let r = Math.floor(Math.random() * SIZE);
-                let c = Math.floor(Math.random() * SIZE);
-                let tile = board[r][c];
-
-                if (!tile.isTrap) {
-                    tile.isTrap = true;
-                    if (tile.terrain === 'sea') {
-                        tile.trapType = Math.random() > 0.5 ? 'vortex' : 'shark';
-                    } else if (tile.terrain === 'forest') {
-                        tile.trapType = Math.random() > 0.5 ? 'snake' : 'scorpion';
-                    } else if (tile.terrain === 'grassland') {
-                        tile.trapType = 'ant';
-                    } else {
-                        tile.trapType = Math.random() > 0.5 ? 'spider' : 'web';
-                    }
-                    trapsAllocated++;
-                }
-            }
-        }
-
-        function calculateProximityNumbers() {
-            for (let r = 0; r < SIZE; r++) {
-                for (let c = 0; c < SIZE; c++) {
-                    if (board[r][c].isTrap) continue;
-                    let count = 0;
-                    for (let dr = -1; dr <= 1; dr++) {
-                        for (let dc = -1; dc <= 1; dc++) {
-                            let nr = r + dr, nc = c + dc;
-                            if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
-                                if (board[nr][nc].isTrap) count++;
-                            }
-                        }
-                    }
-                    board[r][c].count = count;
-                }
-            }
-        }
-
-        function renderBoardView() {
-            for (let r = 0; r < SIZE; r++) {
-                for (let c = 0; c < SIZE; c++) {
-                    const tile = board[r][c];
-                    const cell = document.createElement('div');
-                    cell.classList.add('cell', 'covered', tile.terrain);
-                    
-                    if (tile.terrain === 'sea') cell.innerText = "🌊";
-                    else if (tile.terrain === 'forest') cell.innerText = "🌲";
-                    else if (tile.terrain === 'grassland') cell.innerText = "🌱"; 
-                    else cell.innerText = "⛰️";
-
-                    cell.addEventListener('click', () => handleCellInteraction(tile, 'click'));
-                    cell.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        handleCellInteraction(tile, 'right');
-                    });
-
-                    tile.element = cell;
-                    gridElement.appendChild(cell);
-                }
-            }
-        }
-
-        function handleCellInteraction(tile, clickType) {
-            if (!gameActive || tile.revealed) return;
-
-            if (clickType === 'right' || isFlagMode) {
-                tile.flagged = !tile.flagged;
-                playSound('flag');
-                if (tile.flagged) {
-                    tile.element.innerText = "📍";
-                    flagCount++;
-                } else {
-                    if (tile.terrain === 'sea') tile.element.innerText = "🌊";
-                    else if (tile.terrain === 'forest') tile.element.innerText = "🌲";
-                    else if (tile.terrain === 'grassland') tile.element.innerText = "🌱";
-                    else tile.element.innerText = "⛰️";
-                    flagCount--;
-                }
-                updateCountDisplay();
-                checkVictoryCondition();
-            } else {
-                if (tile.flagged) return;
-                
-                if (tile.isTrap) {
-                    triggerEndGame(tile);
-                } else {
-                    playSound('dig');
-                    revealSafeCell(tile.r, tile.c);
-                    checkVictoryCondition();
-                }
-            }
-        }
-
-        function revealSafeCell(r, c) {
-            let tile = board[r][c];
-            if (tile.revealed || tile.flagged) return;
-
-            tile.revealed = true;
-            tile.element.classList.remove('covered');
-            tile.element.classList.add('revealed');
-            
-            if (tile.terrain === 'sea') tile.element.innerText = "🐚";
-            else if (tile.terrain === 'forest') tile.element.innerText = "🍃";
-            else if (tile.terrain === 'grassland') tile.element.innerText = "🍀";
-            else tile.element.innerText = "🌼";
-
-            if (tile.count > 0) {
-                tile.element.innerText = tile.count;
-                tile.element.classList.add(`n-${Math.min(tile.count, 4)}`);
-            } else {
-                for (let dr = -1; dr <= 1; dr++) {
-                    for (let dc = -1; dc <= 1; dc++) {
-                        let nr = r + dr, nc = c + dc;
-                        if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
-                            revealSafeCell(nr, nc);
-                        }
-                    }
-                }
-            }
-        }
-
-        function triggerEndGame(triggeredTile) {
-            gameActive = false;
-            playSound('boom');
-
-            for (let r = 0; r < SIZE; r++) {
-                for (let c = 0; c < SIZE; c++) {
-                    let tile = board[r][c];
-                    if (tile.isTrap) {
-                        tile.element.classList.remove('covered');
-                        tile.element.classList.add('revealed', 'enemy-reveal');
-                        
-                        let monster = ENEMY_ASSETS[tile.trapType];
-                        tile.element.innerHTML = `<span style="${monster.style}">${monster.glyph}</span>`;
-                    }
-                }
-            }
-
-            triggeredTile.element.style.backgroundColor = "rgba(255, 0, 0, 0.4)";
-
-            setTimeout(() => {
-                overlayTitle.innerText = "YOU DIED";
-                overlayTitle.style.color = "#ff0055";
-                overlayTitle.style.textShadow = "0 0 15px #ff0055";
-                overlayDesc.innerText = `An environmental hazard claimed your explorer team.`;
-                startBtn.innerText = "Try to Survive Again";
-                uiOverlay.classList.remove('hide');
-            }, 1200);
-        }
-
-        function checkVictoryCondition() {
-            let won = true;
-            for (let r = 0; r < SIZE; r++) {
-                for (let c = 0; c < SIZE; c++) {
-                    let tile = board[r][c];
-                    if (!tile.isTrap && !tile.revealed) won = false;
-                }
-            }
-            if (won) {
-                gameActive = false;
-                playSound('win');
-                overlayTitle.innerText = "MAP CLEARED";
-                overlayTitle.style.color = "#00ff00";
-                overlayTitle.style.textShadow = "0 0 15px #00ff00";
-                overlayDesc.innerText = "You successfully mapped the biomes and avoided the threats!";
-                startBtn.innerText = "Explore Next Map";
-                uiOverlay.classList.remove('hide');
-            }
-        }
-
-        function updateCountDisplay() {
-            mineCountDisplay.innerText = `TRAPS MARKED: ${flagCount} / ${activeTrapsCount}`;
-        }
-    </script>
+document.querySelectorAll('.diff-opt').forEach(b=>b.onclick=()=>{document.querySelectorAll('.diff-opt').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');traps=+b.dataset.traps;difficulty=b.dataset.name;updateHud()});
+function makeBoard(){board=Array.from({length:SIZE*SIZE},()=>({trap:false,revealed:false,flagged:false,count:0,biome:BIOMES[Math.floor(Math.random()*4)],enemy:null}))}
+function neighbors(i){const r=Math.floor(i/SIZE),c=i%SIZE,out=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const rr=r+dr,cc=c+dc;if(rr>=0&&rr<SIZE&&cc>=0&&cc<SIZE)out.push(rr*SIZE+cc)}return out}
+function placeTraps(safeIdx){
+ const safe=new Set([safeIdx,...neighbors(safeIdx)]),spots=[...Array(SIZE*SIZE).keys()].filter(i=>!safe.has(i));
+ for(let n=0;n<traps;n++){const k=Math.floor(Math.random()*spots.length),i=spots.splice(k,1)[0];board[i].trap=true;board[i].enemy=Object.keys(ASSETS)[Math.floor(Math.random()*7)]}
+ board.forEach((c,i)=>c.count=c.trap?0:neighbors(i).filter(n=>board[n].trap).length);
+}
+function fmt(s){return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+function startTimer(){clearInterval(timer);timer=setInterval(()=>{if(active&&!paused){seconds++;timerEl.textContent=fmt(seconds)}},1000)}
+function updateBest(){const k=`roguemap-best-${difficulty}`,v=+localStorage.getItem(k)||0;if(!v||seconds<v)localStorage.setItem(k,seconds);showBest()}
+function showBest(){const v=+localStorage.getItem(`roguemap-best-${difficulty}`)||0;bestEl.textContent=`BEST: ${v?fmt(v):'--:--'}`}
+function updateHud(){remainingEl.textContent=`TRAPS: ${Math.max(0,traps-flags)}`;flagDisplay.textContent=`FLAGS: ${flags} / ${traps}`;modeBtn.textContent=flagMode?'FLAG':'DIG';modeBtn.classList.toggle('active',flagMode);showBest()}
+function startGame(){makeBoard();active=true;flagMode=false;flags=0;firstDig=true;seconds=0;paused=false;timerEl.textContent='00:00';ui.classList.add('hide');pauseOverlay.classList.add('hide');updateHud();render();startTimer();sfx(460)}
+function toggleFlag(i){
+ const c=board[i];if(!active||c.revealed)return;
+ if(!c.flagged&&flags>=traps)return;
+ c.flagged=!c.flagged;flags+=c.flagged?1:-1;sfx(c.flagged?220:160);updateHud();render();checkWin()
+}
+function flood(start){
+ const q=[start],seen=new Set();
+ while(q.length){const i=q.shift();if(seen.has(i))continue;seen.add(i);const c=board[i];if(c.flagged||c.trap||c.revealed)continue;c.revealed=true;if(c.count===0)neighbors(i).forEach(n=>{if(!seen.has(n)&&!board[n].trap&&!board[n].flagged)q.push(n)})}
+}
+function lose(i){active=false;clearInterval(timer);board.forEach(c=>{if(c.trap)c.revealed=true});render();sfx(75,'sawtooth',.55,.15);overlayTitle.textContent='Expedition Lost';overlayDesc.textContent=`You uncovered a ${board[i].enemy}. Time ${fmt(seconds)}.`;startBtn.textContent='Generate Map';ui.classList.remove('hide')}
+function reveal(i){
+ if(!active||paused)return;const c=board[i];
+ if(c.revealed){if(c.count>0)chord(i);return}
+ if(c.flagged)return;
+ if(firstDig){placeTraps(i);firstDig=false}
+ if(c.trap){c.revealed=true;lose(i);return}
+ flood(i);sfx(90,'triangle',.07,.04);render();checkWin()
+}
+function chord(i){
+ const c=board[i],ns=neighbors(i),marked=ns.filter(n=>board[n].flagged).length;if(marked!==c.count)return;
+ for(const n of ns){const x=board[n];if(!x.flagged&&!x.revealed){if(x.trap){lose(n);return}else flood(n)}}sfx(130);render();checkWin()
+}
+function checkWin(){if(!active)return;const safe=board.filter(c=>!c.trap);if(safe.every(c=>c.revealed)){active=false;clearInterval(timer);updateBest();sfx(780,'sine',.3,.1);overlayTitle.textContent='Map Cleared';overlayDesc.textContent=`${difficulty.toUpperCase()} · ${fmt(seconds)} · Best ${bestEl.textContent.replace('BEST: ','')}`;startBtn.textContent='Explore Again';ui.classList.remove('hide')}}
+function render(){
+ grid.innerHTML='';board.forEach((c,i)=>{const d=document.createElement('div');d.className='cell '+c.biome;
+ if(c.revealed){d.classList.add('revealed');if(c.trap){d.classList.add('enemy');d.textContent=ASSETS[c.enemy]}else if(c.count){d.textContent=c.count;d.classList.add('n-'+c.count)}}
+ else{d.classList.add('covered');if(c.flagged){d.textContent='⚑';d.classList.add('flagged')}}
+ d.oncontextmenu=e=>{e.preventDefault();toggleFlag(i)};
+ d.onpointerdown=e=>{if(e.pointerType==='touch'){longTriggered=false;longTimer=setTimeout(()=>{longTriggered=true;toggleFlag(i)},430)}};
+ d.onpointerup=e=>{clearTimeout(longTimer);if(e.pointerType==='touch'&&longTriggered)return;if(flagMode)toggleFlag(i);else reveal(i)};
+ d.onpointercancel=()=>clearTimeout(longTimer);d.onpointerleave=e=>{if(e.pointerType==='touch')clearTimeout(longTimer)};
+ grid.appendChild(d)})}
+function setPause(v){if(!active)return;paused=v;pauseOverlay.classList.toggle('hide',!v);pauseBtn.textContent=v?'RESUME':'PAUSE'}
+modeBtn.onclick=()=>{if(active){flagMode=!flagMode;updateHud()}};
+pauseBtn.onclick=()=>setPause(!paused);document.getElementById('resumeBtn').onclick=()=>setPause(false);startBtn.onclick=startGame;
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&active)setPause(true)});
+showBest();updateHud();makeBoard();render();
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js'));
+</script>
 </body>
 </html>
