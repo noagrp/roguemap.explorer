@@ -14,8 +14,8 @@
 :root{--cyan:#00ffff;--pink:#ff00ff;--board:min(94vw,540px,72vh)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%}
-body{background:#000;color:#fff;font-family:Segoe UI,Tahoma,sans-serif;min-height:100vh;min-height:100dvh;overflow:hidden;touch-action:none;display:flex;justify-content:center;padding:max(6px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
-#gameWrapper{width:min(100%,560px);height:100%;display:flex;flex-direction:column;align-items:center;gap:6px}
+body{background:#000;color:#fff;font-family:Segoe UI,Tahoma,sans-serif;min-height:100vh;min-height:100dvh;overflow:hidden;touch-action:none;display:flex;justify-content:center;align-items:center;padding:max(6px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
+#gameWrapper{width:min(100%,560px);height:auto;max-height:100%;display:flex;flex-direction:column;align-items:center;gap:6px;transform:translateY(-1.5vh)}
 #headerZone{text-align:center;flex:0 0 auto}
 h1{font-size:clamp(1.5rem,7vw,2.4rem);color:var(--cyan);text-shadow:0 0 15px var(--cyan);letter-spacing:4px;text-transform:uppercase}
 #subText{font-size:.82rem;color:var(--pink);text-shadow:0 0 8px var(--pink)}
@@ -40,7 +40,7 @@ h1{font-size:clamp(1.5rem,7vw,2.4rem);color:var(--cyan);text-shadow:0 0 15px var
 #controlPanel{width:var(--board);display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:7px;font:700 .76rem monospace;color:var(--cyan)}
 .ctl{color:#bbb;padding:8px 10px}.ctl.active{color:var(--pink);border-color:var(--pink);box-shadow:0 0 9px rgba(255,0,255,.2)}
 #hint{font-size:.68rem;color:#555;text-align:center;min-height:14px}
-@media(max-height:680px){:root{--board:min(88vw,500px,66vh)}h1{font-size:1.35rem}#subText{display:none}}
+@media(max-height:680px){:root{--board:min(88vw,500px,66vh)}body{align-items:flex-start}#gameWrapper{height:100%;max-height:none;transform:none}h1{font-size:1.35rem}#subText{display:none}}
 @media(prefers-reduced-motion:reduce){.cell,.enemy{transition:none;animation:none}}
 </style>
 </head>
